@@ -15,7 +15,7 @@
   
   SHEET   = Excel worksheet name for the table
   
-  ROWHDR  = Header text for the row label column
+  ROWHDR  = Header text for the row label column (default = "Measure")
   
   BOLDROW = Indentation level for bold row labels. Default is all row
             labels are bolded ("all"). Use integers (1, 2, 3...) to
@@ -24,11 +24,11 @@
 %macro mkreport(data    = ,
                 colcntl = ,
                 sheet   = ,
-                rowhdr  = ,
+                rowhdr  = Measure,
                 boldrow = all
                 );
 
-  %local _i _colnames _ncol _col _clen _plen _rlen _coldefs;
+  %local _i _colnames _coldefs _ncol _col _rlen _slen _plen;
 
   %* Replace >= and <= with unicode characters in the row label column ;
   data _temp;
@@ -68,7 +68,7 @@
           then coldef = cat(strip(coldef)," ",cats("col",colnum),"))");
        else coldef = cat(strip(coldef)," ",cats("col",colnum));
 
-       %* Put the column defintions into a macro variable to insert
+       %* Put the column definitions into a macro variable to insert
           in the PROC REPORT syntax ;
        if eof then do;
           call symputx("_coldefs",coldef);
@@ -79,7 +79,7 @@
 
   %* Determine column lengths based on the table data ;
   data _collength;
-       set &data;
+       set _temp;
        array col{&_ncol} $ col:;
 
        %* Row label character length ;
@@ -132,6 +132,7 @@
                          style(column) = {cellwidth = &_rlen.em 
                                           just      = left
                                           };
+       %* Assign width for each data column as calculated above ;
        %do _i = 1 %to &_ncol;
            %if &&_colval&_i = P %then %let _len = &_plen;
            %else %let _len = &_slen;
@@ -140,7 +141,7 @@
        define c / noprint;
 
        compute c;
-       %* Bold row labels at the requested indent level ;
+       %* Bold row labels at the requested level ;
        %if %upcase(&boldrow) = ALL or &boldrow > 0 %then %do;
            if col1 = "" 
            %if %upcase(&boldrow) ne ALL %then %do;

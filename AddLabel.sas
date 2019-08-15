@@ -29,64 +29,66 @@
                 stopvar  = 
                 );
 
-       %* If no output data set name is given, use the original data set 
-          name ;
-       %if not %length(&out) %then %let out = &data;
-       %if not %length(&stopvar) %then %let stopvar = &startvar;
+  %local _startnum _stopnum;
 
-       %* Get the row numbers associated with the starting and ending
-          row variables for which the label applies ;
-       proc sql noprint;
-            select rownum into :startnum trimmed from &rowcntl 
-            where rowvar = "&startvar";
-            select rownum into :stopnum trimmed from &rowcntl 
-            where rowvar = "&stopvar";
-            quit;
+  %* Use the DATA parameter for the output data set and the STARTVAR 
+     variable for STOPVAR if these parameters are not specified ;
+  %if not %length(&out) %then %let out = &data;
+  %if not %length(&stopvar) %then %let stopvar = &startvar;
 
-       %* Assign special missing characters to order labels ;
-       data _null_;
-            set &data (keep = rownum statnum where = (rownum = &startnum));
-            by rownum statnum;
-            if first.rownum;
+  %* Get the row numbers associated with the starting and ending
+     row variables for which the label applies ;
+  proc sql noprint;
+       select rownum into :_startnum trimmed from &rowcntl 
+       where rowvar = "&startvar";
+       select rownum into :_stopnum trimmed from &rowcntl 
+       where rowvar = "&stopvar";
+       quit;
 
-            %* Determine the first statistic value for the row -- If a 
-               label already exists then set the special missing character 
-               to one letter before ;
-            statchar = strip(lowcase(put(statnum,4.)));
-            if anyalpha(statchar) then 
-               call symputx("statnum",cats(".",byte(rank(statchar)-1)));
+  %* Assign special missing characters to order labels ;
+  data _null_;
+       set &data (keep = rownum statnum where = (rownum = &_startnum));
+       by rownum statnum;
+       if first.rownum;
 
-            %* Otherwise use .L to represent the label ;
-            else call symputx("statnum",".l");
+       %* Determine the first statistic value for the row -- If a 
+          label already exists then set the special missing character 
+          to one letter before ;
+       statchar = strip(lowcase(put(statnum,4.)));
+       if anyalpha(statchar) then 
+          call symputx("_statnum",cats(".",byte(rank(statchar)-1)));
 
-            run;
+       %* Otherwise use .L to represent the label ;
+       else call symputx("_statnum",".l");
 
-       %* Add the label to the table ;
-       data &out (drop = i);
-            set &data;
-            by rownum statnum;
-            array col $ col: pval:;
+       run;
 
-            %* Increase the indentation by one for all rows included
-               under the new label ;
-            if &startnum <= rownum <= &stopnum then 
-               rowlabel = cat('A0A0A0A0'x,strip(rowlabel));
-            output;
+  %* Add the label to the table ;
+  data &out (drop = i);
+       set &data;
+       by rownum statnum;
+       array col $ col: pval:;
 
-            %* Create the new label based on the first observation for 
-               the row and output ;
-            if first.rownum and rownum = &startnum then do;
-               statnum = &statnum;
-               rowlabel = "&label";
-               do i = 1 to dim(col);
-                  col{i} = "";
-               end;
-               output;
-            end;
-            run;
+       %* Increase the indentation by one for all rows included
+          under the new label ;
+       if &_startnum <= rownum <= &_stopnum then 
+          rowlabel = cat('A0A0A0A0'x,strip(rowlabel));
+       output;
 
-       proc sort data=&out;
-            by rownum statnum;
-            run;
+       %* Create the new label based on the first observation for 
+          the row and output ;
+       if first.rownum and rownum = &_startnum then do;
+          statnum = &_statnum;
+          rowlabel = "&label";
+          do i = 1 to dim(col);
+             col{i} = "";
+          end;
+          output;
+       end;
+       run;
+
+  proc sort data=&out;
+       by rownum statnum;
+       run;
 
 %mend addlabel;

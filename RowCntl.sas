@@ -3,7 +3,7 @@
   
   Platform:     SAS 9.4
   
-  Description:  Macro to creates a row control file to be used in
+  Description:  Macro to create a row control file to be used in
                 conjunction with an associated column control file to
                 dynamically create study tables
 

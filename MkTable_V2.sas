@@ -321,7 +321,7 @@
 
              %* If all columns for the unknown/missing value for a
                 categorical variable have zero count then suppress the 
-               output ;
+                output ;
              if not (find(rowlabel,"Missing","i") or 
                      find(rowlabel,"Unknown","i"))
                      %do _i = 1 %to &_ncol;
